@@ -1,0 +1,185 @@
+{
+  "properties": {
+    "connectionReferences": {
+      "shared_teams": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "fno_sharedteams_supplyflow"
+        },
+        "api": {
+          "name": "shared_teams"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        },
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        },
+        "Canal do Teams de Suprimentos (fno_ProcurementTeamsChannel)": {
+          "defaultValue": {
+            "teamId": "",
+            "channelId": ""
+          },
+          "type": "Object",
+          "metadata": {
+            "schemaName": "fno_ProcurementTeamsChannel",
+            "description": "Equipe e canal do Teams."
+          }
+        }
+      },
+      "triggers": {
+        "manual": {
+          "type": "Request",
+          "kind": "Button",
+          "inputs": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "title": "Título",
+                  "type": "string",
+                  "x-ms-dynamically-added": true,
+                  "description": "Título do alerta",
+                  "x-ms-content-hint": "TEXT"
+                },
+                "text_1": {
+                  "title": "Mensagem",
+                  "type": "string",
+                  "x-ms-dynamically-added": true,
+                  "description": "Corpo da mensagem",
+                  "x-ms-content-hint": "TEXT"
+                },
+                "text_2": {
+                  "title": "Link",
+                  "type": "string",
+                  "x-ms-dynamically-added": true,
+                  "description": "URL de detalhe",
+                  "x-ms-content-hint": "TEXT"
+                },
+                "text_3": {
+                  "title": "Severidade",
+                  "type": "string",
+                  "x-ms-dynamically-added": true,
+                  "description": "info | warning | error",
+                  "x-ms-content-hint": "TEXT"
+                }
+              },
+              "required": [
+                "text",
+                "text_1"
+              ]
+            }
+          }
+        }
+      },
+      "actions": {
+        "Montar_cartao": {
+          "type": "Compose",
+          "runAfter": {},
+          "inputs": {
+            "type": "AdaptiveCard",
+            "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+            "version": "1.4",
+            "body": [
+              {
+                "type": "TextBlock",
+                "size": "Medium",
+                "weight": "Bolder",
+                "text": "@{triggerBody()?['text']}",
+                "color": "@{if(equals(triggerBody()?['text_3'],'error'),'Attention',if(equals(triggerBody()?['text_3'],'warning'),'Warning','Accent'))}"
+              },
+              {
+                "type": "TextBlock",
+                "wrap": true,
+                "text": "@{triggerBody()?['text_1']}"
+              },
+              {
+                "type": "FactSet",
+                "facts": [
+                  {
+                    "title": "Origem",
+                    "value": "SupplyFlow"
+                  },
+                  {
+                    "title": "Quando",
+                    "value": "@{convertFromUtc(utcNow(),'E. South America Standard Time','dd/MM/yyyy HH:mm')}"
+                  }
+                ]
+              }
+            ],
+            "actions": [
+              {
+                "type": "Action.OpenUrl",
+                "title": "Ver detalhes",
+                "url": "@{coalesce(triggerBody()?['text_2'],'https://make.powerautomate.com')}"
+              }
+            ]
+          }
+        },
+        "Publicar_no_canal": {
+          "type": "OpenApiConnection",
+          "runAfter": {
+            "Montar_cartao": [
+              "Succeeded"
+            ]
+          },
+          "inputs": {
+            "host": {
+              "connectionName": "shared_teams",
+              "operationId": "PostCardToConversation",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_teams"
+            },
+            "parameters": {
+              "poster": "Flow bot",
+              "location": "Channel",
+              "body/recipient/groupId": "@parameters('Canal do Teams de Suprimentos (fno_ProcurementTeamsChannel)')?['teamId']",
+              "body/recipient/channelId": "@parameters('Canal do Teams de Suprimentos (fno_ProcurementTeamsChannel)')?['channelId']",
+              "body/messageBody": "@{outputs('Montar_cartao')}"
+            },
+            "authentication": "@parameters('$authentication')"
+          },
+          "retryPolicy": {
+            "type": "exponential",
+            "count": 4,
+            "interval": "PT10S"
+          }
+        },
+        "Responder": {
+          "type": "Response",
+          "kind": "PowerApp",
+          "runAfter": {
+            "Publicar_no_canal": [
+              "Succeeded"
+            ]
+          },
+          "inputs": {
+            "statusCode": 200,
+            "body": {
+              "enviado": "true"
+            },
+            "schema": {
+              "type": "object",
+              "properties": {
+                "enviado": {
+                  "title": "enviado",
+                  "x-ms-dynamically-added": true,
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "outputs": {}
+    }
+  },
+  "schemaVersion": "1.0.0.0"
+}

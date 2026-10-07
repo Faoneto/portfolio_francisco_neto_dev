@@ -717,6 +717,20 @@
       "type": "Json",
       "defaultValue": "{\"teamId\":\"\",\"channelId\":\"\"}",
       "description": "Destino das notificações (fluxos)."
+    },
+    {
+      "schemaName": "fno_ApprovalRouting",
+      "displayName": "Roteamento de aprovadores por nível",
+      "type": "Json",
+      "defaultValue": "{\"100000002\":\"diretoria.suprimentos@contoso.com\",\"100000003\":\"cfo@contoso.com\"}",
+      "description": "E-mails (ou grupos) dos aprovadores de nível Diretor e CFO. O nível Gestor usa o gestor do centro de custo."
+    },
+    {
+      "schemaName": "fno_AppUrl",
+      "displayName": "URL do app SupplyFlow",
+      "type": "String",
+      "defaultValue": "https://<sua-org>.crm2.dynamics.com/main.aspx?appid=<app-id>",
+      "description": "Usada para montar links de registros em aprovações e notificações."
     }
   ]
 }
