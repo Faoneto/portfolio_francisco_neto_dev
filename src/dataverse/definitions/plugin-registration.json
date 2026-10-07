@@ -1,0 +1,287 @@
+{
+  "$comment": "Plugin steps, images, Custom APIs and Service Bus endpoints. Applied by SupplyFlow.Deployer (`plugins` command) and replayed by the pipeline-simulation tests.",
+  "assembly": "SupplyFlow.Plugins",
+  "plugins": [
+    {
+      "type": "SupplyFlow.Plugins.Plugins.Supplier.ValidateSupplierCnpjPlugin",
+      "description": "Valida, normaliza e evita duplicidade de CNPJ.",
+      "steps": [
+        {
+          "name": "SupplyFlow: account Create – validate CNPJ",
+          "message": "Create",
+          "entity": "account",
+          "stage": "PreValidation",
+          "mode": "Synchronous",
+          "rank": 1
+        },
+        {
+          "name": "SupplyFlow: account Update – validate CNPJ",
+          "message": "Update",
+          "entity": "account",
+          "stage": "PreValidation",
+          "mode": "Synchronous",
+          "rank": 1,
+          "filteringAttributes": [
+            "fno_cnpj",
+            "fno_issupplier"
+          ],
+          "images": [
+            {
+              "name": "PreImage",
+              "type": "PreImage",
+              "attributes": [
+                "fno_cnpj",
+                "fno_issupplier"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "SupplyFlow.Plugins.Plugins.Requisition.RequisitionLifecyclePlugin",
+      "description": "Máquina de estados da requisição.",
+      "steps": [
+        {
+          "name": "SupplyFlow: requisition Create – defaults",
+          "message": "Create",
+          "entity": "fno_purchaserequisition",
+          "stage": "PreOperation",
+          "mode": "Synchronous",
+          "rank": 1
+        },
+        {
+          "name": "SupplyFlow: requisition Update stage – state machine",
+          "message": "Update",
+          "entity": "fno_purchaserequisition",
+          "stage": "PreOperation",
+          "mode": "Synchronous",
+          "rank": 1,
+          "filteringAttributes": [
+            "fno_stage"
+          ],
+          "images": [
+            {
+              "name": "PreImage",
+              "type": "PreImage",
+              "attributes": [
+                "fno_stage",
+                "fno_requesterid",
+                "fno_supplierid",
+                "fno_costcenterid",
+                "fno_needbydate",
+                "fno_justification",
+                "fno_cancellationreason",
+                "fno_sappurchaseorder"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "SupplyFlow.Plugins.Plugins.Requisition.RequisitionBudgetCommitmentPlugin",
+      "description": "Compromete/libera orçamento do centro de custo.",
+      "steps": [
+        {
+          "name": "SupplyFlow: requisition Update stage – budget commitment",
+          "message": "Update",
+          "entity": "fno_purchaserequisition",
+          "stage": "PostOperation",
+          "mode": "Synchronous",
+          "rank": 1,
+          "filteringAttributes": [
+            "fno_stage"
+          ],
+          "images": [
+            {
+              "name": "PreImage",
+              "type": "PreImage",
+              "attributes": [
+                "fno_budgetcommitted"
+              ]
+            },
+            {
+              "name": "PostImage",
+              "type": "PostImage",
+              "attributes": [
+                "fno_stage",
+                "fno_totalamount",
+                "fno_costcenterid",
+                "fno_budgetcommitted"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "SupplyFlow.Plugins.Plugins.Requisition.RequisitionLinePricingPlugin",
+      "description": "Precificação e validação dos itens.",
+      "steps": [
+        {
+          "name": "SupplyFlow: line Create – pricing",
+          "message": "Create",
+          "entity": "fno_requisitionline",
+          "stage": "PreOperation",
+          "mode": "Synchronous",
+          "rank": 1
+        },
+        {
+          "name": "SupplyFlow: line Update – pricing",
+          "message": "Update",
+          "entity": "fno_requisitionline",
+          "stage": "PreOperation",
+          "mode": "Synchronous",
+          "rank": 1,
+          "filteringAttributes": [
+            "fno_materialid",
+            "fno_quantity",
+            "fno_unitprice",
+            "fno_requisitionid"
+          ],
+          "images": [
+            {
+              "name": "PreImage",
+              "type": "PreImage",
+              "attributes": [
+                "fno_requisitionid",
+                "fno_materialid",
+                "fno_quantity",
+                "fno_unitprice"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "SupplyFlow.Plugins.Plugins.Requisition.RequisitionLineTotalsPlugin",
+      "description": "Recalcula o total da requisição.",
+      "steps": [
+        {
+          "name": "SupplyFlow: line Create – totals",
+          "message": "Create",
+          "entity": "fno_requisitionline",
+          "stage": "PostOperation",
+          "mode": "Synchronous",
+          "rank": 1
+        },
+        {
+          "name": "SupplyFlow: line Update – totals",
+          "message": "Update",
+          "entity": "fno_requisitionline",
+          "stage": "PostOperation",
+          "mode": "Synchronous",
+          "rank": 1,
+          "filteringAttributes": [
+            "fno_quantity",
+            "fno_unitprice",
+            "fno_requisitionid",
+            "statecode"
+          ],
+          "images": [
+            {
+              "name": "PreImage",
+              "type": "PreImage",
+              "attributes": [
+                "fno_requisitionid"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "SupplyFlow: line Delete – totals",
+          "message": "Delete",
+          "entity": "fno_requisitionline",
+          "stage": "PostOperation",
+          "mode": "Synchronous",
+          "rank": 1,
+          "images": [
+            {
+              "name": "PreImage",
+              "type": "PreImage",
+              "attributes": [
+                "fno_requisitionid"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "SupplyFlow.Plugins.CustomApis.SubmitRequisitionApi",
+      "description": "Implementação da Custom API fno_SubmitRequisition.",
+      "steps": []
+    }
+  ],
+  "customApis": [
+    {
+      "uniqueName": "fno_SubmitRequisition",
+      "displayName": "Enviar Requisição para Aprovação",
+      "description": "Valida a requisição, calcula a alçada e envia para aprovação.",
+      "bindingType": "Entity",
+      "boundEntity": "fno_purchaserequisition",
+      "isFunction": false,
+      "isPrivate": false,
+      "allowedStepType": "SyncAndAsync",
+      "pluginType": "SupplyFlow.Plugins.CustomApis.SubmitRequisitionApi",
+      "requestParameters": [],
+      "responseProperties": [
+        {
+          "uniqueName": "ApprovalLevel",
+          "displayName": "Nível de Aprovação",
+          "type": "Integer"
+        },
+        {
+          "uniqueName": "IsOverBudget",
+          "displayName": "Acima do Orçamento",
+          "type": "Boolean"
+        },
+        {
+          "uniqueName": "Message",
+          "displayName": "Mensagem",
+          "type": "String"
+        }
+      ]
+    }
+  ],
+  "serviceEndpoints": [
+    {
+      "name": "SupplyFlow SAP Outbound Queue",
+      "description": "Fila do Azure Service Bus consumida pela Azure Function de integração SAP.",
+      "namespaceAddress": "sb://<seu-namespace>.servicebus.windows.net/",
+      "queueName": "sap-purchase-requisitions",
+      "sasKeyName": "dataverse-send",
+      "sasKeyEnvironmentVariable": "SUPPLYFLOW_SB_SASKEY",
+      "steps": [
+        {
+          "name": "SupplyFlow: requisition approved → Service Bus",
+          "message": "Update",
+          "entity": "fno_purchaserequisition",
+          "stage": "PostOperation",
+          "mode": "Asynchronous",
+          "rank": 1,
+          "filteringAttributes": [
+            "fno_stage"
+          ],
+          "images": [
+            {
+              "name": "PostImage",
+              "type": "PostImage",
+              "attributes": [
+                "fno_name",
+                "fno_stage",
+                "fno_supplierid",
+                "fno_costcenterid",
+                "fno_totalamount",
+                "fno_sappurchaseorder",
+                "fno_needbydate"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

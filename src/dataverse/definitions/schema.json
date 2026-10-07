@@ -1,0 +1,722 @@
+{
+  "$comment": "Desired state of the SupplyFlow data model. Applied idempotently by SupplyFlow.Deployer (`schema` command). Values must match SupplyFlow.Plugins/Model/Schema.cs.",
+  "publisher": {
+    "uniqueName": "francisconeto",
+    "friendlyName": "Francisco Neto",
+    "prefix": "fno",
+    "optionValuePrefix": 10000
+  },
+  "solution": {
+    "uniqueName": "SupplyFlow",
+    "friendlyName": "SupplyFlow – Procure-to-Pay",
+    "version": "1.0.0.0",
+    "description": "Gestão de fornecedores, requisições de compra com alçadas de aprovação e integração SAP."
+  },
+  "globalChoices": [
+    {
+      "schemaName": "fno_materialgroup",
+      "displayName": "Grupo de Material",
+      "description": "Classificação de materiais usada em alçadas de aprovação.",
+      "options": [
+        {
+          "value": 100000000,
+          "label": "MRO (Manutenção)"
+        },
+        {
+          "value": 100000001,
+          "label": "Matéria-prima"
+        },
+        {
+          "value": 100000002,
+          "label": "Embalagem"
+        },
+        {
+          "value": 100000003,
+          "label": "Serviços"
+        },
+        {
+          "value": 100000004,
+          "label": "Tecnologia da Informação"
+        }
+      ]
+    },
+    {
+      "schemaName": "fno_approvallevel",
+      "displayName": "Nível de Aprovação",
+      "options": [
+        {
+          "value": 100000001,
+          "label": "Gestor do Centro de Custo"
+        },
+        {
+          "value": 100000002,
+          "label": "Diretor"
+        },
+        {
+          "value": 100000003,
+          "label": "CFO"
+        }
+      ]
+    }
+  ],
+  "tables": [
+    {
+      "schemaName": "account",
+      "existing": true,
+      "columns": [
+        {
+          "schemaName": "fno_Cnpj",
+          "type": "String",
+          "displayName": "CNPJ",
+          "maxLength": 14,
+          "description": "CNPJ normalizado (14 caracteres, numérico ou alfanumérico). Exibido com máscara pelo controle PCF CnpjInput."
+        },
+        {
+          "schemaName": "fno_IsSupplier",
+          "type": "Boolean",
+          "displayName": "É Fornecedor",
+          "defaultBoolean": false
+        },
+        {
+          "schemaName": "fno_SupplierStatus",
+          "type": "Choice",
+          "displayName": "Status de Homologação",
+          "options": [
+            {
+              "value": 100000000,
+              "label": "Em homologação",
+              "color": "#F2C744"
+            },
+            {
+              "value": 100000001,
+              "label": "Homologado",
+              "color": "#2E7D32"
+            },
+            {
+              "value": 100000002,
+              "label": "Bloqueado",
+              "color": "#C62828"
+            }
+          ],
+          "defaultChoice": 100000000
+        },
+        {
+          "schemaName": "fno_SapVendorCode",
+          "type": "String",
+          "displayName": "Código Fornecedor SAP",
+          "maxLength": 10
+        },
+        {
+          "schemaName": "fno_RegistrationStatus",
+          "type": "String",
+          "displayName": "Situação Cadastral (Receita)",
+          "maxLength": 50,
+          "description": "Preenchido pelo fluxo de enriquecimento via conector BrasilAPI."
+        },
+        {
+          "schemaName": "fno_RegistrationCheckedOn",
+          "type": "DateTime",
+          "displayName": "Situação Verificada em"
+        }
+      ],
+      "keys": [
+        {
+          "schemaName": "fno_ak_account_cnpj",
+          "displayName": "CNPJ",
+          "columns": [
+            "fno_cnpj"
+          ]
+        },
+        {
+          "schemaName": "fno_ak_account_sapvendor",
+          "displayName": "Código SAP",
+          "columns": [
+            "fno_sapvendorcode"
+          ]
+        }
+      ]
+    },
+    {
+      "schemaName": "fno_Material",
+      "displayName": "Material",
+      "pluralName": "Materiais",
+      "ownership": "OrganizationOwned",
+      "description": "Catálogo de materiais (espelho do mestre de materiais SAP MM).",
+      "primaryName": {
+        "schemaName": "fno_Name",
+        "displayName": "Descrição",
+        "maxLength": 200
+      },
+      "columns": [
+        {
+          "schemaName": "fno_MaterialCode",
+          "type": "String",
+          "displayName": "Código SAP",
+          "maxLength": 18,
+          "required": "ApplicationRequired"
+        },
+        {
+          "schemaName": "fno_MaterialGroup",
+          "type": "Choice",
+          "displayName": "Grupo de Material",
+          "globalChoice": "fno_materialgroup",
+          "required": "ApplicationRequired"
+        },
+        {
+          "schemaName": "fno_UnitOfMeasure",
+          "type": "String",
+          "displayName": "Unidade de Medida",
+          "maxLength": 3,
+          "required": "ApplicationRequired"
+        },
+        {
+          "schemaName": "fno_StandardPrice",
+          "type": "Money",
+          "displayName": "Preço Padrão",
+          "precision": 2,
+          "minValue": 0,
+          "maxValue": 100000000
+        }
+      ],
+      "keys": [
+        {
+          "schemaName": "fno_ak_material_code",
+          "displayName": "Código SAP",
+          "columns": [
+            "fno_materialcode"
+          ]
+        }
+      ]
+    },
+    {
+      "schemaName": "fno_CostCenter",
+      "displayName": "Centro de Custo",
+      "pluralName": "Centros de Custo",
+      "ownership": "OrganizationOwned",
+      "primaryName": {
+        "schemaName": "fno_Name",
+        "displayName": "Nome",
+        "maxLength": 100
+      },
+      "columns": [
+        {
+          "schemaName": "fno_Code",
+          "type": "String",
+          "displayName": "Código",
+          "maxLength": 10,
+          "required": "ApplicationRequired"
+        },
+        {
+          "schemaName": "fno_FiscalYear",
+          "type": "Integer",
+          "displayName": "Ano Fiscal",
+          "minValue": 2020,
+          "maxValue": 2100,
+          "required": "ApplicationRequired"
+        },
+        {
+          "schemaName": "fno_AnnualBudget",
+          "type": "Money",
+          "displayName": "Orçamento Anual",
+          "precision": 2,
+          "minValue": 0,
+          "maxValue": 1000000000,
+          "required": "ApplicationRequired",
+          "secured": true
+        },
+        {
+          "schemaName": "fno_CommittedAmount",
+          "type": "Money",
+          "displayName": "Valor Comprometido",
+          "precision": 2,
+          "minValue": 0,
+          "maxValue": 1000000000,
+          "description": "Mantido pelo plugin RequisitionBudgetCommitmentPlugin."
+        },
+        {
+          "schemaName": "fno_AvailableBudget",
+          "type": "Money",
+          "displayName": "Saldo Disponível",
+          "precision": 2,
+          "minValue": -1000000000,
+          "maxValue": 1000000000,
+          "description": "Orçamento anual − comprometido. Mantido por plugin."
+        }
+      ],
+      "keys": [
+        {
+          "schemaName": "fno_ak_costcenter_code",
+          "displayName": "Código + Ano",
+          "columns": [
+            "fno_code",
+            "fno_fiscalyear"
+          ]
+        }
+      ]
+    },
+    {
+      "schemaName": "fno_ApprovalPolicy",
+      "displayName": "Alçada de Aprovação",
+      "pluralName": "Alçadas de Aprovação",
+      "ownership": "OrganizationOwned",
+      "description": "Matriz de alçadas: a partir de qual valor (e para qual grupo de material) cada nível precisa aprovar.",
+      "primaryName": {
+        "schemaName": "fno_Name",
+        "displayName": "Nome",
+        "maxLength": 100
+      },
+      "columns": [
+        {
+          "schemaName": "fno_Level",
+          "type": "Choice",
+          "displayName": "Nível",
+          "globalChoice": "fno_approvallevel",
+          "required": "ApplicationRequired"
+        },
+        {
+          "schemaName": "fno_MinAmount",
+          "type": "Money",
+          "displayName": "Valor Mínimo",
+          "precision": 2,
+          "minValue": 0,
+          "maxValue": 1000000000,
+          "required": "ApplicationRequired"
+        },
+        {
+          "schemaName": "fno_MaterialGroup",
+          "type": "Choice",
+          "displayName": "Grupo de Material (opcional)",
+          "globalChoice": "fno_materialgroup"
+        }
+      ]
+    },
+    {
+      "schemaName": "fno_PurchaseRequisition",
+      "displayName": "Requisição de Compra",
+      "pluralName": "Requisições de Compra",
+      "ownership": "UserOwned",
+      "hasNotes": true,
+      "hasActivities": true,
+      "primaryName": {
+        "schemaName": "fno_Name",
+        "displayName": "Número",
+        "maxLength": 30,
+        "autoNumberFormat": "RC-{DATETIMEUTC:yyyyMM}-{SEQNUM:5}"
+      },
+      "columns": [
+        {
+          "schemaName": "fno_NeedByDate",
+          "type": "DateOnly",
+          "displayName": "Data de Necessidade",
+          "required": "ApplicationRequired"
+        },
+        {
+          "schemaName": "fno_Priority",
+          "type": "Choice",
+          "displayName": "Prioridade",
+          "options": [
+            {
+              "value": 100000000,
+              "label": "Normal"
+            },
+            {
+              "value": 100000001,
+              "label": "Urgente",
+              "color": "#C62828"
+            }
+          ],
+          "defaultChoice": 100000000
+        },
+        {
+          "schemaName": "fno_Justification",
+          "type": "Memo",
+          "displayName": "Justificativa",
+          "maxLength": 4000,
+          "required": "ApplicationRequired"
+        },
+        {
+          "schemaName": "fno_Stage",
+          "type": "Choice",
+          "displayName": "Etapa",
+          "options": [
+            {
+              "value": 100000000,
+              "label": "Rascunho",
+              "color": "#9E9E9E"
+            },
+            {
+              "value": 100000001,
+              "label": "Em aprovação",
+              "color": "#F2C744"
+            },
+            {
+              "value": 100000002,
+              "label": "Aprovada",
+              "color": "#2E7D32"
+            },
+            {
+              "value": 100000003,
+              "label": "Rejeitada",
+              "color": "#C62828"
+            },
+            {
+              "value": 100000004,
+              "label": "Enviada ao SAP",
+              "color": "#1565C0"
+            },
+            {
+              "value": 100000005,
+              "label": "Pedido criado",
+              "color": "#004D40"
+            },
+            {
+              "value": 100000006,
+              "label": "Cancelada",
+              "color": "#616161"
+            }
+          ],
+          "defaultChoice": 100000000
+        },
+        {
+          "schemaName": "fno_TotalAmount",
+          "type": "Money",
+          "displayName": "Valor Total",
+          "precision": 2,
+          "minValue": 0,
+          "maxValue": 1000000000
+        },
+        {
+          "schemaName": "fno_ApprovalLevel",
+          "type": "Choice",
+          "displayName": "Nível de Aprovação",
+          "globalChoice": "fno_approvallevel"
+        },
+        {
+          "schemaName": "fno_IsOverBudget",
+          "type": "Boolean",
+          "displayName": "Acima do Orçamento",
+          "defaultBoolean": false
+        },
+        {
+          "schemaName": "fno_ApprovalNotes",
+          "type": "Memo",
+          "displayName": "Motivos da Alçada",
+          "maxLength": 2000
+        },
+        {
+          "schemaName": "fno_SubmittedOn",
+          "type": "DateTime",
+          "displayName": "Enviada em"
+        },
+        {
+          "schemaName": "fno_ApprovedOn",
+          "type": "DateTime",
+          "displayName": "Aprovada em"
+        },
+        {
+          "schemaName": "fno_CancellationReason",
+          "type": "Memo",
+          "displayName": "Motivo do Cancelamento",
+          "maxLength": 2000
+        },
+        {
+          "schemaName": "fno_SapPurchaseOrder",
+          "type": "String",
+          "displayName": "Pedido SAP",
+          "maxLength": 10
+        },
+        {
+          "schemaName": "fno_IntegrationStatus",
+          "type": "Choice",
+          "displayName": "Status da Integração",
+          "options": [
+            {
+              "value": 100000000,
+              "label": "Não enviada"
+            },
+            {
+              "value": 100000001,
+              "label": "Na fila",
+              "color": "#F2C744"
+            },
+            {
+              "value": 100000002,
+              "label": "Sucesso",
+              "color": "#2E7D32"
+            },
+            {
+              "value": 100000003,
+              "label": "Falha",
+              "color": "#C62828"
+            }
+          ],
+          "defaultChoice": 100000000
+        },
+        {
+          "schemaName": "fno_IntegrationMessage",
+          "type": "String",
+          "displayName": "Mensagem da Integração",
+          "maxLength": 2000
+        },
+        {
+          "schemaName": "fno_BudgetCommitted",
+          "type": "Boolean",
+          "displayName": "Orçamento Comprometido",
+          "defaultBoolean": false,
+          "description": "Controle de idempotência do comprometimento orçamentário."
+        }
+      ],
+      "keys": [
+        {
+          "schemaName": "fno_ak_requisition_sappo",
+          "displayName": "Pedido SAP",
+          "columns": [
+            "fno_sappurchaseorder"
+          ]
+        }
+      ]
+    },
+    {
+      "schemaName": "fno_RequisitionLine",
+      "displayName": "Item da Requisição",
+      "pluralName": "Itens da Requisição",
+      "ownership": "UserOwned",
+      "primaryName": {
+        "schemaName": "fno_Name",
+        "displayName": "Descrição",
+        "maxLength": 200
+      },
+      "columns": [
+        {
+          "schemaName": "fno_Quantity",
+          "type": "Decimal",
+          "displayName": "Quantidade",
+          "precision": 3,
+          "minValue": 0.001,
+          "maxValue": 1000000,
+          "required": "ApplicationRequired"
+        },
+        {
+          "schemaName": "fno_UnitPrice",
+          "type": "Money",
+          "displayName": "Preço Unitário",
+          "precision": 4,
+          "minValue": 0,
+          "maxValue": 100000000
+        },
+        {
+          "schemaName": "fno_LineTotal",
+          "type": "Money",
+          "displayName": "Total do Item",
+          "precision": 2,
+          "minValue": 0,
+          "maxValue": 1000000000
+        },
+        {
+          "schemaName": "fno_MaterialGroup",
+          "type": "Choice",
+          "displayName": "Grupo de Material",
+          "globalChoice": "fno_materialgroup"
+        },
+        {
+          "schemaName": "fno_DeliveryDate",
+          "type": "DateOnly",
+          "displayName": "Data de Entrega"
+        }
+      ]
+    },
+    {
+      "schemaName": "fno_IntegrationLog",
+      "displayName": "Log de Integração",
+      "pluralName": "Logs de Integração",
+      "ownership": "OrganizationOwned",
+      "audit": false,
+      "description": "Rastreabilidade das mensagens trocadas com o SAP (escrito pela Azure Function).",
+      "primaryName": {
+        "schemaName": "fno_Name",
+        "displayName": "Operação",
+        "maxLength": 100
+      },
+      "columns": [
+        {
+          "schemaName": "fno_Direction",
+          "type": "Choice",
+          "displayName": "Direção",
+          "options": [
+            {
+              "value": 100000000,
+              "label": "Saída (Dataverse → SAP)"
+            },
+            {
+              "value": 100000001,
+              "label": "Entrada (SAP → Dataverse)"
+            }
+          ]
+        },
+        {
+          "schemaName": "fno_Status",
+          "type": "Choice",
+          "displayName": "Status",
+          "options": [
+            {
+              "value": 100000000,
+              "label": "Sucesso",
+              "color": "#2E7D32"
+            },
+            {
+              "value": 100000001,
+              "label": "Falha",
+              "color": "#C62828"
+            },
+            {
+              "value": 100000002,
+              "label": "Ignorada (idempotência)",
+              "color": "#9E9E9E"
+            }
+          ]
+        },
+        {
+          "schemaName": "fno_CorrelationId",
+          "type": "String",
+          "displayName": "Correlation Id",
+          "maxLength": 100
+        },
+        {
+          "schemaName": "fno_MessageId",
+          "type": "String",
+          "displayName": "Service Bus Message Id",
+          "maxLength": 100
+        },
+        {
+          "schemaName": "fno_Attempt",
+          "type": "Integer",
+          "displayName": "Tentativa",
+          "minValue": 0,
+          "maxValue": 100
+        },
+        {
+          "schemaName": "fno_DurationMs",
+          "type": "Integer",
+          "displayName": "Duração (ms)",
+          "minValue": 0,
+          "maxValue": 2147483647
+        },
+        {
+          "schemaName": "fno_Payload",
+          "type": "Memo",
+          "displayName": "Payload",
+          "maxLength": 100000
+        },
+        {
+          "schemaName": "fno_ErrorMessage",
+          "type": "Memo",
+          "displayName": "Erro",
+          "maxLength": 10000
+        }
+      ]
+    }
+  ],
+  "lookups": [
+    {
+      "schemaName": "fno_SupplierId",
+      "referencingTable": "fno_purchaserequisition",
+      "referencedTable": "account",
+      "relationshipName": "fno_account_fno_purchaserequisition_supplierid",
+      "displayName": "Fornecedor",
+      "required": "ApplicationRequired",
+      "cascade": "ReferentialRestrict"
+    },
+    {
+      "schemaName": "fno_CostCenterId",
+      "referencingTable": "fno_purchaserequisition",
+      "referencedTable": "fno_costcenter",
+      "relationshipName": "fno_costcenter_fno_purchaserequisition",
+      "displayName": "Centro de Custo",
+      "required": "ApplicationRequired",
+      "cascade": "ReferentialRestrict"
+    },
+    {
+      "schemaName": "fno_RequesterId",
+      "referencingTable": "fno_purchaserequisition",
+      "referencedTable": "systemuser",
+      "relationshipName": "fno_systemuser_fno_purchaserequisition_requesterid",
+      "displayName": "Requisitante",
+      "cascade": "ReferentialRemoveLink"
+    },
+    {
+      "schemaName": "fno_RequisitionId",
+      "referencingTable": "fno_requisitionline",
+      "referencedTable": "fno_purchaserequisition",
+      "relationshipName": "fno_purchaserequisition_fno_requisitionline",
+      "displayName": "Requisição",
+      "required": "ApplicationRequired",
+      "cascade": "Parental"
+    },
+    {
+      "schemaName": "fno_MaterialId",
+      "referencingTable": "fno_requisitionline",
+      "referencedTable": "fno_material",
+      "relationshipName": "fno_material_fno_requisitionline",
+      "displayName": "Material",
+      "required": "ApplicationRequired",
+      "cascade": "ReferentialRestrict"
+    },
+    {
+      "schemaName": "fno_ManagerId",
+      "referencingTable": "fno_costcenter",
+      "referencedTable": "systemuser",
+      "relationshipName": "fno_systemuser_fno_costcenter_managerid",
+      "displayName": "Gestor",
+      "required": "ApplicationRequired",
+      "cascade": "ReferentialRemoveLink"
+    },
+    {
+      "schemaName": "fno_RequisitionId",
+      "referencingTable": "fno_integrationlog",
+      "referencedTable": "fno_purchaserequisition",
+      "relationshipName": "fno_purchaserequisition_fno_integrationlog",
+      "displayName": "Requisição",
+      "cascade": "ReferentialRemoveLink"
+    }
+  ],
+  "manyToMany": [
+    {
+      "schemaName": "fno_account_fno_material",
+      "entity1": "account",
+      "entity2": "fno_material",
+      "intersectEntity": "fno_account_fno_material",
+      "entity1MenuLabel": "Fornecedores Homologados",
+      "entity2MenuLabel": "Materiais Homologados"
+    }
+  ],
+  "environmentVariables": [
+    {
+      "schemaName": "fno_RequireSupplierMaterialApproval",
+      "displayName": "Exigir homologação fornecedor x material",
+      "type": "Boolean",
+      "defaultValue": "yes",
+      "description": "Quando 'yes', itens só podem usar materiais homologados para o fornecedor (N:N)."
+    },
+    {
+      "schemaName": "fno_SapIntegrationEnabled",
+      "displayName": "Integração SAP habilitada",
+      "type": "Boolean",
+      "defaultValue": "no",
+      "description": "Marca requisições aprovadas como 'Na fila' para a integração via Service Bus."
+    },
+    {
+      "schemaName": "fno_ApprovalTimeoutDays",
+      "displayName": "Prazo de aprovação (dias)",
+      "type": "Number",
+      "defaultValue": "3",
+      "description": "Usado pelo fluxo de aprovação para escalonamento."
+    },
+    {
+      "schemaName": "fno_ProcurementTeamsChannel",
+      "displayName": "Canal do Teams de Suprimentos",
+      "type": "Json",
+      "defaultValue": "{\"teamId\":\"\",\"channelId\":\"\"}",
+      "description": "Destino das notificações (fluxos)."
+    }
+  ]
+}
