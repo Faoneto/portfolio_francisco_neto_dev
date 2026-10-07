@@ -9,9 +9,9 @@ flowchart LR
     TEST["TEST<br/><small>Sandbox<br/>solução gerenciada</small>"]
     PROD["PROD<br/><small>Production<br/>solução gerenciada</small>"]
 
-    DEV -- "export-solution.yml<br/>(unpack → Pull Request)" --> GIT
-    GIT -- "deploy-dev.yml<br/>(schema, plugins, JS, PCF como código)" --> DEV
-    GIT -- "release.yml<br/>(pack managed 1×)" --> TEST
+    DEV -- "supplyflow-export-solution.yml<br/>(unpack → Pull Request)" --> GIT
+    GIT -- "supplyflow-deploy-dev.yml<br/>(schema, plugins, JS, PCF como código)" --> DEV
+    GIT -- "supplyflow-release.yml<br/>(pack managed 1×)" --> TEST
     TEST -- "aprovação manual<br/>(GitHub Environment)" --> PROD
 ```
 
@@ -33,8 +33,8 @@ ambiente vem de **environment variables** e **connection references** preenchida
 | Plugins, steps, imagens, Custom API, service endpoint | C# + `plugin-registration.json` | Diretamente (código) |
 | Web resources | TypeScript | Diretamente (código) → bundle no CI |
 | PCF | TypeScript/React | Diretamente (código) |
-| Formulários, views, app model-driven, sitemap, BPF, business rules, dashboards, comandos | Maker portal (DEV) | `export-solution.yml` → `solution/src` via PR |
-| Fluxos, connection references, custom connector | Maker portal / `pac connector` (DEV) | `export-solution.yml` → `solution/src` via PR |
+| Formulários, views, app model-driven, sitemap, BPF, business rules, dashboards, comandos | Maker portal (DEV) | `supplyflow-export-solution.yml` → `solution/src` via PR |
+| Fluxos, connection references, custom connector | Maker portal / `pac connector` (DEV) | `supplyflow-export-solution.yml` → `solution/src` via PR |
 | Infraestrutura Azure | Bicep | Diretamente (código) |
 
 O pacote **gerenciado** promovido é sempre gerado a partir de `solution/src` — o mesmo artefato vai para
@@ -44,10 +44,10 @@ TEST e PROD (*build once, deploy many*).
 
 | Workflow | Gatilho | O que faz |
 |----------|---------|-----------|
-| [`ci.yml`](../.github/workflows/ci.yml) | PR e push na `main` | Build `net462`/`net8.0`, 95+ testes .NET, validação das definições, lint/typecheck/test/build TypeScript, build PCF, Bicep build/lint, JSON, **Solution Checker** |
-| [`deploy-dev.yml`](../.github/workflows/deploy-dev.yml) | Manual | `Deployer schema` → `plugins` → `webresources` → (`seed`) → `pac pcf push` |
-| [`export-solution.yml`](../.github/workflows/export-solution.yml) | Manual (com versão) | Carimba versão, exporta gerenciada + não gerenciada, `unpack --packagetype Both`, abre PR |
-| [`release.yml`](../.github/workflows/release.yml) | Tag `v*` | Pack gerenciado, publish da Function; TEST (Bicep + Function + import) → aprovação → PROD |
+| [`supplyflow-ci.yml`](../../.github/workflows/supplyflow-ci.yml) | PR e push na `main` | Build `net462`/`net8.0`, 95+ testes .NET, validação das definições, lint/typecheck/test/build TypeScript, build PCF, Bicep build/lint, JSON, **Solution Checker** |
+| [`supplyflow-deploy-dev.yml`](../../.github/workflows/supplyflow-deploy-dev.yml) | Manual | `Deployer schema` → `plugins` → `webresources` → (`seed`) → `pac pcf push` |
+| [`supplyflow-export-solution.yml`](../../.github/workflows/supplyflow-export-solution.yml) | Manual (com versão) | Carimba versão, exporta gerenciada + não gerenciada, `unpack --packagetype Both`, abre PR |
+| [`supplyflow-release.yml`](../../.github/workflows/supplyflow-release.yml) | Tag `supplyflow-v*` | Pack gerenciado, publish da Function; TEST (Bicep + Function + import) → aprovação → PROD |
 
 ### Import em produção
 
@@ -80,9 +80,9 @@ Configure *required reviewers* no environment `prod`.
 ## Estratégia de branches
 
 - `main` protegida: PR obrigatório + CI verde.
-- PRs de export (`solution/export-x.y.z.w`) são revisados como código: diffs de XML de formulário e de
+- PRs de export (`supplyflow/solution/export-x.y.z.w`) são revisados como código: diffs de XML de formulário e de
   JSON de fluxo ficam legíveis porque o unpack separa cada componente em arquivo próprio.
-- Tag `vX.Y.Z` dispara o release.
+- Tag `supplyflow-vX.Y.Z` dispara o release.
 
 ## Próximos passos possíveis
 

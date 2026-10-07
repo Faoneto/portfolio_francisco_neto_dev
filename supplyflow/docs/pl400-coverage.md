@@ -24,7 +24,7 @@ roteiro de estudo (abra o arquivo, entenda, altere, rode os testes) e como guia 
 | Chaves alternativas (inclusive compostas) e upsert | [data-model.md](data-model.md#chaves-alternativas-alternate-keys), [`SeedData.cs`](../src/dataverse/SupplyFlow.Deployer/Deployment/SeedData.cs) |
 | Autonumber | `fno_name` da requisição (`RC-{DATETIMEUTC:yyyyMM}-{SEQNUM:5}`) |
 | Environment variables e connection references | [`schema.json`](../src/dataverse/definitions/schema.json), [`EnvironmentVariableService.cs`](../src/dataverse/SupplyFlow.Plugins/Services/EnvironmentVariableService.cs), [`deployment/settings`](../deployment/settings) |
-| ALM: managed/unmanaged, pack/unpack, pipelines, deployment settings | [alm.md](alm.md), [`.github/workflows`](../.github/workflows) |
+| ALM: managed/unmanaged, pack/unpack, pipelines, deployment settings | [alm.md](alm.md), [`.github/workflows`](../../.github/workflows) |
 
 ## 3. Implementar melhorias em Power Apps
 

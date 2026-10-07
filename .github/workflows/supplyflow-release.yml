@@ -1,12 +1,12 @@
-name: Release (TEST → PROD)
+name: SupplyFlow – Release (TEST → PROD)
 
 # Builds the managed solution ONCE from source control and promotes the same artifact through
 # environments protected by GitHub Environment approvals. Environment-specific values (connection
-# references, environment variables) come from deployment/settings/<env>.json – never edited in PROD.
+# references, environment variables) come from supplyflow/deployment/settings/<env>.json – never edited in PROD.
 
 on:
   push:
-    tags: ["v*"]
+    tags: ["supplyflow-v*"]
   workflow_dispatch:
 
 permissions:
@@ -22,18 +22,18 @@ jobs:
       - name: Pack managed solution
         uses: microsoft/powerplatform-actions/pack-solution@v1
         with:
-          solution-folder: solution/src
-          solution-file: out/SupplyFlow_managed.zip
+          solution-folder: supplyflow/solution/src
+          solution-file: supplyflow/out/SupplyFlow_managed.zip
           solution-type: Managed
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
       - name: Publish Azure Function
-        run: dotnet publish src/integration/SupplyFlow.Integration -c Release -o out/function
+        run: dotnet publish supplyflow/src/integration/SupplyFlow.Integration -c Release -o supplyflow/out/function
       - uses: actions/upload-artifact@v4
         with:
           name: release
-          path: out
+          path: supplyflow/out
 
   deploy-test:
     needs: build
@@ -44,7 +44,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: release
-          path: out
+          path: supplyflow/out
       - uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
@@ -54,13 +54,13 @@ jobs:
         uses: azure/arm-deploy@v2
         with:
           resourceGroupName: ${{ vars.AZURE_RESOURCE_GROUP }}
-          template: infra/main.bicep
+          template: supplyflow/infra/main.bicep
           parameters: environmentName=test dataverseUrl=${{ vars.ENVIRONMENT_URL }}
       - name: Azure Function
         uses: Azure/functions-action@v1
         with:
           app-name: ${{ vars.FUNCTION_APP_NAME }}
-          package: out/function
+          package: supplyflow/out/function
           sku: flexconsumption
       - uses: microsoft/powerplatform-actions/actions-install@v1
       - name: Import managed solution
@@ -70,9 +70,9 @@ jobs:
           app-id: ${{ secrets.PP_APP_ID }}
           client-secret: ${{ secrets.PP_CLIENT_SECRET }}
           tenant-id: ${{ secrets.PP_TENANT_ID }}
-          solution-file: out/SupplyFlow_managed.zip
+          solution-file: supplyflow/out/SupplyFlow_managed.zip
           use-deployment-settings-file: true
-          deployment-settings-file: deployment/settings/test.json
+          deployment-settings-file: supplyflow/deployment/settings/test.json
           stage-and-upgrade: true
           publish-changes: true
           activate-plugins: true
@@ -87,7 +87,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: release
-          path: out
+          path: supplyflow/out
       - uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
@@ -97,13 +97,13 @@ jobs:
         uses: azure/arm-deploy@v2
         with:
           resourceGroupName: ${{ vars.AZURE_RESOURCE_GROUP }}
-          template: infra/main.bicep
+          template: supplyflow/infra/main.bicep
           parameters: environmentName=prod dataverseUrl=${{ vars.ENVIRONMENT_URL }} sapBaseUrl=${{ vars.SAP_BASE_URL }}
       - name: Azure Function
         uses: Azure/functions-action@v1
         with:
           app-name: ${{ vars.FUNCTION_APP_NAME }}
-          package: out/function
+          package: supplyflow/out/function
           sku: flexconsumption
       - uses: microsoft/powerplatform-actions/actions-install@v1
       - name: Import managed solution
@@ -113,9 +113,9 @@ jobs:
           app-id: ${{ secrets.PP_APP_ID }}
           client-secret: ${{ secrets.PP_CLIENT_SECRET }}
           tenant-id: ${{ secrets.PP_TENANT_ID }}
-          solution-file: out/SupplyFlow_managed.zip
+          solution-file: supplyflow/out/SupplyFlow_managed.zip
           use-deployment-settings-file: true
-          deployment-settings-file: deployment/settings/prod.json
+          deployment-settings-file: supplyflow/deployment/settings/prod.json
           stage-and-upgrade: true
           publish-changes: true
           activate-plugins: true

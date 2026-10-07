@@ -1,4 +1,4 @@
-name: Export solution from DEV
+name: SupplyFlow – Export solution from DEV
 
 # Captures DEV customizations (forms, views, app, flows, connection references…) as source code
 # and opens a pull request – every change to the solution is reviewed like code.
@@ -47,7 +47,7 @@ jobs:
           client-secret: ${{ secrets.PP_CLIENT_SECRET }}
           tenant-id: ${{ secrets.PP_TENANT_ID }}
           solution-name: SupplyFlow
-          solution-output-file: out/SupplyFlow.zip
+          solution-output-file: supplyflow/out/SupplyFlow.zip
           run-asynchronously: true
 
       - name: Export managed
@@ -58,23 +58,23 @@ jobs:
           client-secret: ${{ secrets.PP_CLIENT_SECRET }}
           tenant-id: ${{ secrets.PP_TENANT_ID }}
           solution-name: SupplyFlow
-          solution-output-file: out/SupplyFlow_managed.zip
+          solution-output-file: supplyflow/out/SupplyFlow_managed.zip
           managed: true
           run-asynchronously: true
 
       - name: Unpack (unmanaged + managed)
         uses: microsoft/powerplatform-actions/unpack-solution@v1
         with:
-          solution-file: out/SupplyFlow.zip
-          solution-folder: solution/src
+          solution-file: supplyflow/out/SupplyFlow.zip
+          solution-folder: supplyflow/solution/src
           solution-type: Both
           overwrite-files: true
 
       - name: Open pull request
         uses: peter-evans/create-pull-request@v7
         with:
-          branch: solution/export-${{ inputs.version }}
+          branch: supplyflow/solution/export-${{ inputs.version }}
           commit-message: "chore(solution): export SupplyFlow ${{ inputs.version }} from DEV"
           title: "Solution export ${{ inputs.version }}"
           body: Exported from ${{ vars.DEV_ENVIRONMENT_URL }} by ${{ github.actor }}.
-          add-paths: solution/src
+          add-paths: supplyflow/solution/src

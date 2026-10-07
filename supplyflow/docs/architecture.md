@@ -111,7 +111,7 @@ sequenceDiagram
 | [`src/connectors`](../src/connectors) | OpenAPI 2.0 + C# custom code | BrasilAPI CNPJ |
 | [`src/integration`](../src/integration) | Azure Functions (.NET 8 isolated) | Service Bus trigger, liquidação explícita (complete/abandon/dead-letter), `HttpClient` com pipeline de resiliência, mock do SAP |
 | [`infra`](../infra) | Bicep | Service Bus, Function App Flex Consumption, managed identity, RBAC de menor privilégio, App Insights |
-| [`.github/workflows`](../.github/workflows) | GitHub Actions + Power Platform Actions | CI, deploy DEV, export para PR, release gerenciado TEST → PROD |
+| [`.github/workflows`](../../.github/workflows) | GitHub Actions + Power Platform Actions | CI, deploy DEV, export para PR, release gerenciado TEST → PROD |
 
 ## 5. Requisitos não funcionais
 

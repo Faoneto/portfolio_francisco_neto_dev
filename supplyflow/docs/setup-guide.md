@@ -6,6 +6,8 @@ app, fluxos). Tudo funciona no **Power Apps Developer Plan** (gratuito) + uma as
 
 ## 0. Pré-requisitos
 
+> Todos os comandos deste guia partem da pasta do projeto: `cd supplyflow`.
+
 | Ferramenta | Para quê |
 |------------|----------|
 | [.NET 8 SDK](https://dotnet.microsoft.com/download) | Plugins, Deployer, Azure Function |
@@ -190,7 +192,7 @@ Configure environments `dev`, `test`, `prod` no repositório com os secrets/vari
 
 1. **Deploy to DEV** (manual) → aplica o código.
 2. **Export solution from DEV** (manual, com versão) → abre PR com `solution/src`.
-3. Merge + tag `v1.0.0` → **Release** para TEST e PROD.
+3. Merge + tag `supplyflow-v1.0.0` → **Release** para TEST e PROD.
 
 ## 10. Checklist de evidências para o portfólio
 
