@@ -60,7 +60,7 @@ if (-not $SkipPcf) {
             } finally { Pop-Location }
         }
     } else {
-        Write-Warning 'Power Platform CLI (pac) nao encontrado – PCF ignorado. Instale: dotnet tool install --global Microsoft.PowerApps.CLI.Tool'
+        Write-Warning 'Power Platform CLI (pac) nao encontrado - PCF ignorado. Instale: dotnet tool install --global Microsoft.PowerApps.CLI.Tool'
     }
 }
 
