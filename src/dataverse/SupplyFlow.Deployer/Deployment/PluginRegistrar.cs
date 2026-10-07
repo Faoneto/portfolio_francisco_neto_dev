@@ -122,6 +122,8 @@ public sealed class PluginRegistrar
     {
         var query = new QueryExpression("sdkmessageprocessingstep") { ColumnSet = new ColumnSet("name") };
         query.Criteria.AddCondition("eventhandler", ConditionOperator.Equal, eventHandler.Id);
+        // Never touch the platform-managed main operation (stage 30) that backs a Custom API.
+        query.Criteria.AddCondition("stage", ConditionOperator.NotEqual, 30);
         var registered = _service.RetrieveMultiple(query).Entities.ToDictionary(e => e.GetAttributeValue<string>("name"), e => e.Id);
 
         foreach (var orphan in registered.Where(r => steps.All(s => s.Name != r.Key)))

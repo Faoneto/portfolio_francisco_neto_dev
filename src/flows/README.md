@@ -35,7 +35,9 @@ pelo pipeline sem editar fluxo em produção.
   pular os níveis seguintes.
 - **Segregação de funções** garantida pelo plugin (o requisitante não consegue aprovar a própria
   requisição nem via API). O histórico (quem aprovou, quando, comentário) é gravado em
-  `fno_approvalnotes`.
+  `fno_approvalnotes`. ⚠️ Consequência prática: a connection reference do Dataverse usada pelo F1 deve
+  pertencer a uma **conta de serviço** — se for a conta do próprio requisitante (comum em testes), o
+  plugin bloqueia a aprovação, como deve.
 - **Child flow reutilizável (F5)** para notificações: um único lugar para mudar o canal/formato do card.
 - **Retry policy exponencial** em chamadas externas (Teams) e `limit.timeout` explícito na aprovação.
 - **Links profundos** para o registro no app usando a variável de ambiente `fno_AppUrl`.
