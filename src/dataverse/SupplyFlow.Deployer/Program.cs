@@ -11,8 +11,9 @@ using SupplyFlow.Deployer.Deployment;
 //   dotnet run -- validate
 //   dotnet run -- schema
 //   dotnet run -- plugins --assembly ../SupplyFlow.Plugins/bin/Release/net462/SupplyFlow.Plugins.dll
+//   dotnet run -- webresources --folder ../../webresources/dist
 //   dotnet run -- seed
-//   dotnet run -- all --assembly <path>
+//   dotnet run -- all --assembly <path> --folder <dist>
 //
 // Connection: DATAVERSE_CONNECTION environment variable (any Dataverse connection string), e.g.
 //   AuthType=ClientSecret;Url=https://<org>.crm2.dynamics.com;ClientId=<app-id>;ClientSecret=<secret>
@@ -42,9 +43,9 @@ if (command == "validate")
     return 0;
 }
 
-if (command is not ("schema" or "plugins" or "seed" or "all"))
+if (command is not ("schema" or "plugins" or "webresources" or "seed" or "all"))
 {
-    Console.WriteLine("Usage: SupplyFlow.Deployer <validate|schema|plugins|seed|all> [--assembly <dll>] [--url <env-url>] [--definitions <folder>]");
+    Console.WriteLine("Usage: SupplyFlow.Deployer <validate|schema|plugins|webresources|seed|all> [--assembly <dll>] [--folder <dist>] [--url <env-url>] [--definitions <folder>]");
     return command == "help" ? 0 : 1;
 }
 
@@ -81,6 +82,13 @@ if (command is "plugins" or "all")
     var assembly = Option("--assembly")
         ?? throw new ArgumentException("--assembly <path to net462 SupplyFlow.Plugins.dll> is required.");
     new PluginRegistrar(client, logger, schema.Solution.UniqueName).Register(registration, assembly);
+}
+
+if (command is "webresources" or "all")
+{
+    var folder = Option("--folder")
+        ?? throw new ArgumentException("--folder <src/webresources/dist> is required.");
+    new WebResourceDeployer(client, logger, schema.Solution.UniqueName).Deploy(folder);
 }
 
 if (command is "seed" or "all")

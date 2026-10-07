@@ -1,0 +1,50 @@
+{
+  "EnvironmentVariables": [
+    {
+      "SchemaName": "fno_RequireSupplierMaterialApproval",
+      "Value": "yes"
+    },
+    {
+      "SchemaName": "fno_SapIntegrationEnabled",
+      "Value": "yes"
+    },
+    {
+      "SchemaName": "fno_ApprovalTimeoutDays",
+      "Value": "3"
+    },
+    {
+      "SchemaName": "fno_ApprovalRouting",
+      "Value": "{\"100000002\": \"diretoria.suprimentos.prod@contoso.com\", \"100000003\": \"cfo.prod@contoso.com\"}"
+    },
+    {
+      "SchemaName": "fno_ProcurementTeamsChannel",
+      "Value": "{\"teamId\": \"<team-id>\", \"channelId\": \"<channel-id>\"}"
+    },
+    {
+      "SchemaName": "fno_AppUrl",
+      "Value": "https://<sua-org-prod>.crm2.dynamics.com/main.aspx?appid=<app-id>"
+    }
+  ],
+  "ConnectionReferences": [
+    {
+      "LogicalName": "fno_sharedcommondataserviceforapps_supplyflow",
+      "ConnectionId": "<connection-id>",
+      "ConnectorId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+    },
+    {
+      "LogicalName": "fno_sharedapprovals_supplyflow",
+      "ConnectionId": "<connection-id>",
+      "ConnectorId": "/providers/Microsoft.PowerApps/apis/shared_approvals"
+    },
+    {
+      "LogicalName": "fno_sharedteams_supplyflow",
+      "ConnectionId": "<connection-id>",
+      "ConnectorId": "/providers/Microsoft.PowerApps/apis/shared_teams"
+    },
+    {
+      "LogicalName": "fno_supplyflowbrasilapicnpj_supplyflow",
+      "ConnectionId": "<connection-id>",
+      "ConnectorId": "/providers/Microsoft.PowerApps/apis/<custom-connector-id>"
+    }
+  ]
+}
