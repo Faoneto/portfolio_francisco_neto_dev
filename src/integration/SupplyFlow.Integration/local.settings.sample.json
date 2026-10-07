@@ -1,0 +1,22 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+
+    "ServiceBusConnection__fullyQualifiedNamespace": "<seu-namespace>.servicebus.windows.net",
+    "SapQueueName": "sap-purchase-requisitions",
+
+    "Dataverse__Url": "https://<sua-org>.crm2.dynamics.com",
+    "Dataverse__ClientId": "",
+    "Dataverse__ClientSecret": "",
+    "Dataverse__TenantId": "",
+
+    "Sap__BaseUrl": "http://localhost:7071/api/sap-mock/",
+    "Sap__CompanyCode": "1000",
+    "Sap__PurchasingOrganization": "1000",
+    "Sap__PurchasingGroup": "001",
+    "Sap__Plant": "1010",
+    "Sap__MaxDeliveryCount": "5"
+  }
+}
