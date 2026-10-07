@@ -1,0 +1,80 @@
+name: SupplyFlow – Export solution from DEV
+
+# Captures DEV customizations (forms, views, app, flows, connection references…) as source code
+# and opens a pull request – every change to the solution is reviewed like code.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Solution version to stamp before export (e.g. 1.2.0.0)
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  export:
+    runs-on: windows-latest
+    environment: dev
+    steps:
+      - uses: actions/checkout@v4
+      - uses: microsoft/powerplatform-actions/actions-install@v1
+
+      - uses: microsoft/powerplatform-actions/who-am-i@v1
+        with:
+          environment-url: ${{ vars.DEV_ENVIRONMENT_URL }}
+          app-id: ${{ secrets.PP_APP_ID }}
+          client-secret: ${{ secrets.PP_CLIENT_SECRET }}
+          tenant-id: ${{ secrets.PP_TENANT_ID }}
+
+      - name: Stamp version
+        uses: microsoft/powerplatform-actions/set-online-solution-version@v1
+        with:
+          environment-url: ${{ vars.DEV_ENVIRONMENT_URL }}
+          app-id: ${{ secrets.PP_APP_ID }}
+          client-secret: ${{ secrets.PP_CLIENT_SECRET }}
+          tenant-id: ${{ secrets.PP_TENANT_ID }}
+          name: SupplyFlow
+          version: ${{ inputs.version }}
+
+      - name: Export unmanaged
+        uses: microsoft/powerplatform-actions/export-solution@v1
+        with:
+          environment-url: ${{ vars.DEV_ENVIRONMENT_URL }}
+          app-id: ${{ secrets.PP_APP_ID }}
+          client-secret: ${{ secrets.PP_CLIENT_SECRET }}
+          tenant-id: ${{ secrets.PP_TENANT_ID }}
+          solution-name: SupplyFlow
+          solution-output-file: supplyflow/out/SupplyFlow.zip
+          run-asynchronously: true
+
+      - name: Export managed
+        uses: microsoft/powerplatform-actions/export-solution@v1
+        with:
+          environment-url: ${{ vars.DEV_ENVIRONMENT_URL }}
+          app-id: ${{ secrets.PP_APP_ID }}
+          client-secret: ${{ secrets.PP_CLIENT_SECRET }}
+          tenant-id: ${{ secrets.PP_TENANT_ID }}
+          solution-name: SupplyFlow
+          solution-output-file: supplyflow/out/SupplyFlow_managed.zip
+          managed: true
+          run-asynchronously: true
+
+      - name: Unpack (unmanaged + managed)
+        uses: microsoft/powerplatform-actions/unpack-solution@v1
+        with:
+          solution-file: supplyflow/out/SupplyFlow.zip
+          solution-folder: supplyflow/solution/src
+          solution-type: Both
+          overwrite-files: true
+
+      - name: Open pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: supplyflow/solution/export-${{ inputs.version }}
+          commit-message: "chore(solution): export SupplyFlow ${{ inputs.version }} from DEV"
+          title: "Solution export ${{ inputs.version }}"
+          body: Exported from ${{ vars.DEV_ENVIRONMENT_URL }} by ${{ github.actor }}.
+          add-paths: supplyflow/solution/src

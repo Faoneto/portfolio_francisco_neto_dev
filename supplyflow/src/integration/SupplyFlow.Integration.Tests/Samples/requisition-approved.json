@@ -1,0 +1,90 @@
+{
+  "BusinessUnitId": "6c3f1e7a-1b2c-4d5e-8f90-a1b2c3d4e5f6",
+  "CorrelationId": "9b8f6c1e-2d3a-4b5c-9d8e-7f6a5b4c3d2e",
+  "Depth": 1,
+  "InitiatingUserAzureActiveDirectoryObjectId": "00000000-0000-0000-0000-000000000000",
+  "InitiatingUserId": "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
+  "InputParameters": [
+    {
+      "key": "Target",
+      "value": {
+        "__type": "Entity:http://schemas.microsoft.com/xrm/2011/Contracts",
+        "Attributes": [
+          { "key": "fno_stage", "value": { "__type": "OptionSetValue:http://schemas.microsoft.com/xrm/2011/Contracts", "Value": 100000002 } },
+          { "key": "fno_purchaserequisitionid", "value": "a7c3e9f1-5b6d-4e2a-9c8b-1d2e3f4a5b6c" },
+          { "key": "modifiedon", "value": "/Date(1759850000000)/" }
+        ],
+        "EntityState": null,
+        "FormattedValues": [],
+        "Id": "a7c3e9f1-5b6d-4e2a-9c8b-1d2e3f4a5b6c",
+        "KeyAttributes": [],
+        "LogicalName": "fno_purchaserequisition",
+        "RelatedEntities": [],
+        "RowVersion": null
+      }
+    }
+  ],
+  "IsExecutingOffline": false,
+  "IsInTransaction": false,
+  "IsOfflinePlayback": false,
+  "IsolationMode": 1,
+  "MessageName": "Update",
+  "Mode": 1,
+  "OperationCreatedOn": "/Date(1759850000123)/",
+  "OperationId": "11111111-2222-3333-4444-555555555555",
+  "OrganizationId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+  "OrganizationName": "supplyflowdev",
+  "OutputParameters": [],
+  "OwningExtension": {
+    "Id": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
+    "KeyAttributes": [],
+    "LogicalName": "sdkmessageprocessingstep",
+    "Name": "SupplyFlow: requisition approved → Service Bus",
+    "RowVersion": null
+  },
+  "ParentContext": null,
+  "PostEntityImages": [
+    {
+      "key": "PostImage",
+      "value": {
+        "__type": "Entity:http://schemas.microsoft.com/xrm/2011/Contracts",
+        "Attributes": [
+          { "key": "fno_name", "value": "RC-202610-00042" },
+          { "key": "fno_stage", "value": { "__type": "OptionSetValue:http://schemas.microsoft.com/xrm/2011/Contracts", "Value": 100000002 } },
+          { "key": "fno_totalamount", "value": { "__type": "Money:http://schemas.microsoft.com/xrm/2011/Contracts", "Value": 30306.00 } },
+          {
+            "key": "fno_supplierid",
+            "value": {
+              "__type": "EntityReference:http://schemas.microsoft.com/xrm/2011/Contracts",
+              "Id": "c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f",
+              "KeyAttributes": [],
+              "LogicalName": "account",
+              "Name": "Rolamentos Amazônia Ltda",
+              "RowVersion": null
+            }
+          },
+          { "key": "fno_needbydate", "value": "/Date(1760918400000)/" },
+          { "key": "fno_purchaserequisitionid", "value": "a7c3e9f1-5b6d-4e2a-9c8b-1d2e3f4a5b6c" }
+        ],
+        "EntityState": null,
+        "FormattedValues": [
+          { "key": "fno_stage", "value": "Aprovada" }
+        ],
+        "Id": "a7c3e9f1-5b6d-4e2a-9c8b-1d2e3f4a5b6c",
+        "KeyAttributes": [],
+        "LogicalName": "fno_purchaserequisition",
+        "RelatedEntities": [],
+        "RowVersion": "1234567"
+      }
+    }
+  ],
+  "PreEntityImages": [],
+  "PrimaryEntityId": "a7c3e9f1-5b6d-4e2a-9c8b-1d2e3f4a5b6c",
+  "PrimaryEntityName": "fno_purchaserequisition",
+  "RequestId": "22222222-3333-4444-5555-666666666666",
+  "SecondaryEntityName": "none",
+  "SharedVariables": [],
+  "Stage": 40,
+  "UserAzureActiveDirectoryObjectId": "00000000-0000-0000-0000-000000000000",
+  "UserId": "3f2504e0-4f89-11d3-9a0c-0305e82c3301"
+}

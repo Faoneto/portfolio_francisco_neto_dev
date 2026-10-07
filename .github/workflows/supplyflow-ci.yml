@@ -1,0 +1,144 @@
+name: SupplyFlow – CI
+
+on:
+  pull_request:
+    paths: ["supplyflow/**", ".github/workflows/supplyflow-*.yml"]
+  push:
+    branches: [main]
+    paths: ["supplyflow/**", ".github/workflows/supplyflow-*.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supplyflow-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dotnet:
+    name: Plugins, Deployer & Azure Function (.NET)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Restore
+        run: dotnet restore supplyflow/SupplyFlow.sln
+      - name: Build (warnings as errors)
+        run: dotnet build supplyflow/SupplyFlow.sln --configuration Release --no-restore
+      - name: Test
+        run: >
+          dotnet test supplyflow/SupplyFlow.sln --configuration Release --no-build
+          --collect:"XPlat Code Coverage" --results-directory supplyflow/coverage
+          --logger "trx;LogFilePrefix=results"
+      - name: Validate Dataverse definitions
+        run: dotnet run --project supplyflow/src/dataverse/SupplyFlow.Deployer --configuration Release --no-build -- validate
+      - name: Upload plugin assembly (net462)
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugins
+          path: supplyflow/src/dataverse/SupplyFlow.Plugins/bin/Release/net462/SupplyFlow.Plugins.dll
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotnet-test-results
+          path: supplyflow/coverage
+
+  webresources:
+    name: Web resources (TypeScript)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: supplyflow/src/webresources
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: supplyflow/src/webresources/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: webresources
+          path: supplyflow/src/webresources/dist
+
+  pcf:
+    name: PCF controls
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: supplyflow/src/pcf
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: supplyflow/src/pcf/package-lock.json
+      - run: npm ci
+      - name: Build (also generates ManifestTypes)
+        run: npm run build:prod
+      - run: npm run lint
+      - run: npm test
+
+  infra:
+    name: Bicep
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build & lint Bicep
+        run: |
+          az bicep install
+          az bicep build --file supplyflow/infra/main.bicep --stdout > /dev/null
+          az bicep lint --file supplyflow/infra/main.bicep
+
+  flows:
+    name: Flow & connector definitions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: JSON is well-formed
+        run: |
+          for f in supplyflow/src/flows/*.json supplyflow/src/connectors/*/*.json supplyflow/src/dataverse/definitions/*.json supplyflow/deployment/settings/*.json; do
+            python3 -m json.tool "$f" > /dev/null && echo "ok  $f"
+          done
+
+  solution-checker:
+    name: Solution checker
+    needs: [dotnet, webresources, pcf]
+    runs-on: windows-latest
+    # Becomes active once the solution has been exported to /solution/src and the Power Platform secrets exist.
+    env:
+      PP_APP_ID: ${{ secrets.PP_APP_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check prerequisites
+        id: gate
+        shell: bash
+        run: |
+          if [ -f supplyflow/solution/src/Other/Solution.xml ] && [ -n "$PP_APP_ID" ]; then echo "run=true" >> "$GITHUB_OUTPUT"; else echo "run=false" >> "$GITHUB_OUTPUT"; echo "Skipping: solution not exported yet or secrets missing."; fi
+      - uses: microsoft/powerplatform-actions/actions-install@v1
+        if: steps.gate.outputs.run == 'true'
+      - uses: microsoft/powerplatform-actions/pack-solution@v1
+        if: steps.gate.outputs.run == 'true'
+        with:
+          solution-folder: supplyflow/solution/src
+          solution-file: supplyflow/out/SupplyFlow_managed.zip
+          solution-type: Managed
+      - uses: microsoft/powerplatform-actions/check-solution@v1
+        if: steps.gate.outputs.run == 'true'
+        with:
+          environment-url: ${{ vars.DEV_ENVIRONMENT_URL }}
+          app-id: ${{ secrets.PP_APP_ID }}
+          client-secret: ${{ secrets.PP_CLIENT_SECRET }}
+          tenant-id: ${{ secrets.PP_TENANT_ID }}
+          path: supplyflow/out/SupplyFlow_managed.zip
+          checker-logs-artifact-name: solution-checker-logs

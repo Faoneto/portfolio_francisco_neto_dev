@@ -1,0 +1,72 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "SupplyFlow BrasilAPI CNPJ",
+    "description": "Consulta dados cadastrais de CNPJ (Receita Federal) via BrasilAPI. Usado na homologação de fornecedores do SupplyFlow.",
+    "version": "1.0",
+    "contact": { "name": "Francisco Neto", "url": "https://github.com/faoneto/portfolio_francisco_neto_dev" }
+  },
+  "host": "brasilapi.com.br",
+  "basePath": "/api",
+  "schemes": ["https"],
+  "consumes": [],
+  "produces": ["application/json"],
+  "paths": {
+    "/cnpj/v1/{cnpj}": {
+      "get": {
+        "operationId": "GetCompanyByCnpj",
+        "summary": "Consultar CNPJ",
+        "description": "Retorna razão social, situação cadastral, CNAE e endereço do CNPJ informado. Aceita CNPJ com ou sem máscara.",
+        "x-ms-visibility": "important",
+        "parameters": [
+          {
+            "name": "cnpj",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "x-ms-summary": "CNPJ",
+            "description": "CNPJ com ou sem máscara (ex.: 11.222.333/0001-81)."
+          }
+        ],
+        "responses": {
+          "200": { "description": "CNPJ encontrado", "schema": { "$ref": "#/definitions/Company" } },
+          "400": { "description": "CNPJ inválido" },
+          "404": { "description": "CNPJ não encontrado" }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "Company": {
+      "type": "object",
+      "properties": {
+        "cnpj": { "type": "string", "x-ms-summary": "CNPJ (normalizado)" },
+        "legalName": { "type": "string", "x-ms-summary": "Razão social" },
+        "tradeName": { "type": "string", "x-ms-summary": "Nome fantasia" },
+        "registrationStatus": { "type": "string", "x-ms-summary": "Situação cadastral", "description": "Ex.: ATIVA, BAIXADA, INAPTA, SUSPENSA." },
+        "isActive": { "type": "boolean", "x-ms-summary": "Está ativa", "description": "true quando a situação cadastral é ATIVA." },
+        "registrationStatusDate": { "type": "string", "format": "date", "x-ms-summary": "Data da situação" },
+        "mainActivityCode": { "type": "string", "x-ms-summary": "CNAE principal" },
+        "mainActivity": { "type": "string", "x-ms-summary": "Atividade principal" },
+        "companySize": { "type": "string", "x-ms-summary": "Porte" },
+        "street": { "type": "string", "x-ms-summary": "Logradouro" },
+        "number": { "type": "string", "x-ms-summary": "Número" },
+        "complement": { "type": "string", "x-ms-summary": "Complemento" },
+        "district": { "type": "string", "x-ms-summary": "Bairro" },
+        "city": { "type": "string", "x-ms-summary": "Município" },
+        "state": { "type": "string", "x-ms-summary": "UF" },
+        "postalCode": { "type": "string", "x-ms-summary": "CEP" },
+        "phone": { "type": "string", "x-ms-summary": "Telefone" }
+      }
+    }
+  },
+  "parameters": {},
+  "responses": {},
+  "securityDefinitions": {},
+  "security": [],
+  "tags": [],
+  "x-ms-connector-metadata": [
+    { "propertyName": "Website", "propertyValue": "https://brasilapi.com.br" },
+    { "propertyName": "Categories", "propertyValue": "Data;Business Management" }
+  ]
+}

@@ -1,0 +1,36 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+TestResults/
+*.nupkg
+coverage*/
+
+# Node / PCF / web resources
+node_modules/
+out/
+dist/
+generated/
+*.tsbuildinfo
+coverage/
+
+# Power Platform
+*.zip
+!src/connectors/**/*.zip
+.pac/
+
+# Azure Functions
+local.settings.json
+.azurite/
+__azurite_db*
+__blobstorage__/
+__queuestorage__/
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json

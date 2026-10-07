@@ -1,0 +1,438 @@
+{
+  "properties": {
+    "connectionReferences": {
+      "shared_commondataserviceforapps": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "fno_sharedcommondataserviceforapps_supplyflow"
+        },
+        "api": {
+          "name": "shared_commondataserviceforapps"
+        }
+      },
+      "shared_approvals": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "fno_sharedapprovals_supplyflow"
+        },
+        "api": {
+          "name": "shared_approvals"
+        }
+      },
+      "shared_teams": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "fno_sharedteams_supplyflow"
+        },
+        "api": {
+          "name": "shared_teams"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        },
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        },
+        "Roteamento de aprovadores por nível (fno_ApprovalRouting)": {
+          "defaultValue": {
+            "100000002": "diretoria.suprimentos@contoso.com",
+            "100000003": "cfo@contoso.com"
+          },
+          "type": "Object",
+          "metadata": {
+            "schemaName": "fno_ApprovalRouting",
+            "description": "Aprovadores dos níveis Diretor e CFO."
+          }
+        },
+        "URL do app SupplyFlow (fno_AppUrl)": {
+          "defaultValue": "https://contoso.crm2.dynamics.com/main.aspx?appid=00000000-0000-0000-0000-000000000000",
+          "type": "String",
+          "metadata": {
+            "schemaName": "fno_AppUrl",
+            "description": "URL base do app model-driven (para links nas aprovações)."
+          }
+        }
+      },
+      "triggers": {
+        "Quando_a_requisicao_entra_em_aprovacao": {
+          "type": "OpenApiConnectionWebhook",
+          "description": "Dispara somente quando fno_stage muda para 'Em aprovação' (filtro no servidor – não consome execuções à toa).",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_commondataserviceforapps",
+              "operationId": "SubscribeWebhookTrigger",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+            },
+            "parameters": {
+              "subscriptionRequest/message": 3,
+              "subscriptionRequest/entityname": "fno_purchaserequisition",
+              "subscriptionRequest/scope": 4,
+              "subscriptionRequest/filteringattributes": "fno_stage",
+              "subscriptionRequest/filterexpression": "fno_stage eq 100000001",
+              "subscriptionRequest/runas": 3
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        }
+      },
+      "actions": {
+        "Inicializar_rejeitada": {
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "Rejeitada",
+                "type": "boolean",
+                "value": false
+              }
+            ]
+          },
+          "runAfter": {}
+        },
+        "Inicializar_historico": {
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "Historico",
+                "type": "array",
+                "value": []
+              }
+            ]
+          },
+          "runAfter": {
+            "Inicializar_rejeitada": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Try": {
+          "type": "Scope",
+          "runAfter": {
+            "Inicializar_historico": [
+              "Succeeded"
+            ]
+          },
+          "actions": {
+            "Obter_requisicao": {
+              "type": "OpenApiConnection",
+              "inputs": {
+                "host": {
+                  "connectionName": "shared_commondataserviceforapps",
+                  "operationId": "GetItem",
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+                },
+                "parameters": {
+                  "entityName": "fno_purchaserequisitions",
+                  "recordId": "@triggerOutputs()?['body/fno_purchaserequisitionid']",
+                  "$select": "fno_name,fno_totalamount,fno_approvallevel,fno_approvalnotes,fno_justification,fno_needbydate,fno_isoverbudget",
+                  "$expand": "fno_SupplierId($select=name),fno_RequesterId($select=fullname,internalemailaddress),fno_CostCenterId($select=fno_name;$expand=fno_ManagerId($select=fullname,internalemailaddress))"
+                },
+                "authentication": "@parameters('$authentication')"
+              },
+              "runAfter": {}
+            },
+            "Listar_itens": {
+              "type": "OpenApiConnection",
+              "inputs": {
+                "host": {
+                  "connectionName": "shared_commondataserviceforapps",
+                  "operationId": "ListRecords",
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+                },
+                "parameters": {
+                  "entityName": "fno_requisitionlines",
+                  "$select": "fno_name,fno_quantity,fno_unitprice,fno_linetotal",
+                  "$filter": "_fno_requisitionid_value eq @{triggerOutputs()?['body/fno_purchaserequisitionid']}",
+                  "$orderby": "createdon asc"
+                },
+                "authentication": "@parameters('$authentication')"
+              },
+              "runAfter": {
+                "Obter_requisicao": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Linhas_da_tabela": {
+              "type": "Select",
+              "runAfter": {
+                "Listar_itens": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": {
+                "from": "@outputs('Listar_itens')?['body/value']",
+                "select": "@concat('| ', item()?['fno_name'], ' | ', string(item()?['fno_quantity']), ' | ', formatNumber(item()?['fno_unitprice'], 'N2', 'pt-BR'), ' | ', formatNumber(item()?['fno_linetotal'], 'N2', 'pt-BR'), ' |')"
+              }
+            },
+            "Detalhes_markdown": {
+              "type": "Compose",
+              "runAfter": {
+                "Linhas_da_tabela": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": "**Fornecedor:** @{outputs('Obter_requisicao')?['body/fno_supplierid/name']}  \n**Centro de custo:** @{outputs('Obter_requisicao')?['body/fno_costcenterid/fno_name']}  \n**Valor total:** R$ @{formatNumber(outputs('Obter_requisicao')?['body/fno_totalamount'], 'N2', 'pt-BR')}  \n**Necessidade:** @{formatDateTime(outputs('Obter_requisicao')?['body/fno_needbydate'], 'dd/MM/yyyy')}  \n**Justificativa:** @{outputs('Obter_requisicao')?['body/fno_justification']}\n\n**Motivos da alçada**\n@{outputs('Obter_requisicao')?['body/fno_approvalnotes']}\n\n| Item | Qtd | Preço unit. | Total |\n|---|---:|---:|---:|\n@{join(body('Linhas_da_tabela'), decodeUriComponent('%0A'))}"
+            },
+            "Niveis_de_aprovacao": {
+              "type": "Select",
+              "runAfter": {
+                "Detalhes_markdown": [
+                  "Succeeded"
+                ]
+              },
+              "description": "Gera a cadeia sequencial: Gestor → (Diretor) → (CFO) até o nível exigido pela alçada calculada no plugin.",
+              "inputs": {
+                "from": "@range(1, sub(outputs('Obter_requisicao')?['body/fno_approvallevel'], 100000000))",
+                "select": {
+                  "nivel": "@add(item(), 100000000)",
+                  "aprovador": "@if(equals(item(), 1), outputs('Obter_requisicao')?['body/fno_costcenterid/fno_managerid/internalemailaddress'], parameters('Roteamento de aprovadores por nível (fno_ApprovalRouting)')?[string(add(item(), 100000000))])"
+                }
+              }
+            },
+            "Para_cada_nivel": {
+              "type": "Foreach",
+              "foreach": "@body('Niveis_de_aprovacao')",
+              "runAfter": {
+                "Niveis_de_aprovacao": [
+                  "Succeeded"
+                ]
+              },
+              "runtimeConfiguration": {
+                "concurrency": {
+                  "repetitions": 1
+                }
+              },
+              "actions": {
+                "Ainda_nao_rejeitada": {
+                  "type": "If",
+                  "expression": {
+                    "equals": [
+                      "@variables('Rejeitada')",
+                      false
+                    ]
+                  },
+                  "actions": {
+                    "Solicitar_aprovacao": {
+                      "type": "OpenApiConnectionWebhook",
+                      "inputs": {
+                        "host": {
+                          "connectionName": "shared_approvals",
+                          "operationId": "StartAndWaitForAnApproval",
+                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_approvals"
+                        },
+                        "parameters": {
+                          "approvalType": "Basic",
+                          "WebhookApprovalCreationInput/title": "Aprovar @{outputs('Obter_requisicao')?['body/fno_name']} – R$ @{formatNumber(outputs('Obter_requisicao')?['body/fno_totalamount'], 'N2', 'pt-BR')}",
+                          "WebhookApprovalCreationInput/assignedTo": "@items('Para_cada_nivel')?['aprovador']",
+                          "WebhookApprovalCreationInput/details": "@{outputs('Detalhes_markdown')}",
+                          "WebhookApprovalCreationInput/itemLink": "@{parameters('URL do app SupplyFlow (fno_AppUrl)')}&pagetype=entityrecord&etn=fno_purchaserequisition&id=@{triggerOutputs()?['body/fno_purchaserequisitionid']}",
+                          "WebhookApprovalCreationInput/itemLinkDescription": "Abrir requisição no SupplyFlow",
+                          "WebhookApprovalCreationInput/requestor": "@outputs('Obter_requisicao')?['body/fno_requesterid/internalemailaddress']",
+                          "WebhookApprovalCreationInput/enableNotifications": true,
+                          "WebhookApprovalCreationInput/enableReassignment": true
+                        },
+                        "authentication": "@parameters('$authentication')"
+                      },
+                      "limit": {
+                        "timeout": "P7D"
+                      },
+                      "runAfter": {}
+                    },
+                    "Registrar_resposta": {
+                      "type": "AppendToArrayVariable",
+                      "runAfter": {
+                        "Solicitar_aprovacao": [
+                          "Succeeded"
+                        ]
+                      },
+                      "inputs": {
+                        "name": "Historico",
+                        "value": "@{formatDateTime(utcNow(), 'dd/MM/yyyy HH:mm')} – nível @{items('Para_cada_nivel')?['nivel']} – @{first(outputs('Solicitar_aprovacao')?['body/responses'])?['responder/displayName']}: @{outputs('Solicitar_aprovacao')?['body/outcome']} @{first(outputs('Solicitar_aprovacao')?['body/responses'])?['comments']}"
+                      }
+                    },
+                    "Foi_rejeitada": {
+                      "type": "If",
+                      "runAfter": {
+                        "Registrar_resposta": [
+                          "Succeeded"
+                        ]
+                      },
+                      "expression": {
+                        "equals": [
+                          "@outputs('Solicitar_aprovacao')?['body/outcome']",
+                          "Reject"
+                        ]
+                      },
+                      "actions": {
+                        "Marcar_rejeitada": {
+                          "type": "SetVariable",
+                          "inputs": {
+                            "name": "Rejeitada",
+                            "value": true
+                          },
+                          "runAfter": {}
+                        }
+                      },
+                      "else": {
+                        "actions": {}
+                      }
+                    }
+                  },
+                  "else": {
+                    "actions": {}
+                  },
+                  "runAfter": {}
+                }
+              }
+            },
+            "Aplicar_decisao": {
+              "type": "If",
+              "runAfter": {
+                "Para_cada_nivel": [
+                  "Succeeded"
+                ]
+              },
+              "expression": {
+                "equals": [
+                  "@variables('Rejeitada')",
+                  true
+                ]
+              },
+              "actions": {
+                "Atualizar_rejeitada": {
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "host": {
+                      "connectionName": "shared_commondataserviceforapps",
+                      "operationId": "UpdateRecord",
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+                    },
+                    "parameters": {
+                      "entityName": "fno_purchaserequisitions",
+                      "recordId": "@triggerOutputs()?['body/fno_purchaserequisitionid']",
+                      "item/fno_stage": 100000003,
+                      "item/fno_approvalnotes": "@{outputs('Obter_requisicao')?['body/fno_approvalnotes']}\n\nHistórico de aprovação:\n@{join(variables('Historico'), decodeUriComponent('%0A'))}"
+                    },
+                    "authentication": "@parameters('$authentication')"
+                  },
+                  "runAfter": {}
+                }
+              },
+              "else": {
+                "actions": {
+                  "Atualizar_aprovada": {
+                    "type": "OpenApiConnection",
+                    "inputs": {
+                      "host": {
+                        "connectionName": "shared_commondataserviceforapps",
+                        "operationId": "UpdateRecord",
+                        "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+                      },
+                      "parameters": {
+                        "entityName": "fno_purchaserequisitions",
+                        "recordId": "@triggerOutputs()?['body/fno_purchaserequisitionid']",
+                        "item/fno_stage": 100000002,
+                        "item/fno_approvalnotes": "@{outputs('Obter_requisicao')?['body/fno_approvalnotes']}\n\nHistórico de aprovação:\n@{join(variables('Historico'), decodeUriComponent('%0A'))}"
+                      },
+                      "authentication": "@parameters('$authentication')"
+                    },
+                    "runAfter": {}
+                  }
+                }
+              }
+            },
+            "Avisar_requisitante": {
+              "type": "OpenApiConnection",
+              "runAfter": {
+                "Aplicar_decisao": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": {
+                "host": {
+                  "connectionName": "shared_teams",
+                  "operationId": "PostMessageToConversation",
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_teams"
+                },
+                "parameters": {
+                  "poster": "Flow bot",
+                  "location": "Chat with Flow bot",
+                  "body/recipient": "@outputs('Obter_requisicao')?['body/fno_requesterid/internalemailaddress']",
+                  "body/messageBody": "<p>Sua requisição <b>@{outputs('Obter_requisicao')?['body/fno_name']}</b> foi <b>@{if(variables('Rejeitada'), 'REJEITADA', 'APROVADA')}</b>.</p><p>@{join(variables('Historico'), '<br>')}</p>"
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            }
+          }
+        },
+        "Catch": {
+          "type": "Scope",
+          "runAfter": {
+            "Try": [
+              "Failed",
+              "TimedOut"
+            ]
+          },
+          "actions": {
+            "Acoes_com_falha": {
+              "type": "Query",
+              "runAfter": {},
+              "inputs": {
+                "from": "@result('Try')",
+                "where": "@equals(item()?['status'], 'Failed')"
+              }
+            },
+            "Notificar_suprimentos": {
+              "type": "Workflow",
+              "runAfter": {
+                "Acoes_com_falha": [
+                  "Succeeded"
+                ]
+              },
+              "description": "Child flow 'SupplyFlow | Notificar canal de Suprimentos' (reutilizável).",
+              "inputs": {
+                "host": {
+                  "workflowReferenceName": "7d1c3a52-9b4e-4f0a-8c61-2e5b7f9a1d30"
+                },
+                "body": {
+                  "text": "Falha no fluxo de aprovação",
+                  "text_1": "Requisição @{triggerOutputs()?['body/fno_name']}: @{coalesce(first(body('Acoes_com_falha'))?['error']?['message'], 'erro não detalhado')}",
+                  "text_2": "https://make.powerautomate.com/environments/@{workflow()?['tags']?['environmentName']}/flows/@{workflow()?['name']}/runs/@{workflow()?['run']?['name']}",
+                  "text_3": "error"
+                }
+              }
+            },
+            "Encerrar_com_falha": {
+              "type": "Terminate",
+              "runAfter": {
+                "Notificar_suprimentos": [
+                  "Succeeded",
+                  "Failed"
+                ]
+              },
+              "inputs": {
+                "runStatus": "Failed",
+                "runError": {
+                  "code": "ApprovalFlowFailed",
+                  "message": "@{coalesce(first(body('Acoes_com_falha'))?['error']?['message'], 'erro não detalhado')}"
+                }
+              }
+            }
+          }
+        }
+      },
+      "outputs": {}
+    }
+  },
+  "schemaVersion": "1.0.0.0"
+}

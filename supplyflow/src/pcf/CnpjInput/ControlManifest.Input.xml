@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<manifest>
+  <!--
+    CNPJ field control: input mask, instant validation (numeric + 2026 alphanumeric format)
+    and canonical value output. The server plugin ValidateSupplierCnpjPlugin remains authoritative.
+  -->
+  <control namespace="SupplyFlow" constructor="CnpjInput" version="1.0.0"
+           display-name-key="CNPJ (SupplyFlow)"
+           description-key="Campo de CNPJ com máscara e validação, compatível com o CNPJ alfanumérico (2026)."
+           control-type="virtual">
+    <external-service-usage enabled="false"></external-service-usage>
+    <type-group name="text">
+      <type>SingleLine.Text</type>
+    </type-group>
+    <property name="value" display-name-key="CNPJ" description-key="Coluna de texto que armazena o CNPJ normalizado (14 caracteres)."
+              of-type-group="text" usage="bound" required="true" />
+    <property name="showStatusBadge" display-name-key="Exibir indicador" description-key="Exibe o selo Válido/Inválido ao lado do campo."
+              of-type="TwoOptions" usage="input" required="false" default-value="true" />
+    <resources>
+      <code path="index.ts" order="1" />
+      <platform-library name="React" version="16.14.0" />
+      <platform-library name="Fluent" version="9.46.2" />
+    </resources>
+  </control>
+</manifest>

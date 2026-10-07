@@ -1,0 +1,66 @@
+name: SupplyFlow – Deploy to DEV (inner loop)
+
+# Applies the code-first parts to the DEV environment: schema, plugins, Custom API, web resources and PCF.
+# Makers then build forms/views/flows in DEV and run "Export solution" to capture everything in Git.
+
+on:
+  workflow_dispatch:
+    inputs:
+      seed:
+        description: Load demo data (cost centers, materials, suppliers, approval matrix)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: windows-latest # pac pcf push requires the .NET Framework toolchain on Windows
+    environment: dev
+    env:
+      DATAVERSE_CONNECTION: AuthType=ClientSecret;Url=${{ vars.DEV_ENVIRONMENT_URL }};ClientId=${{ secrets.PP_APP_ID }};ClientSecret=${{ secrets.PP_CLIENT_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build plugins and deployer
+        run: dotnet build supplyflow/SupplyFlow.sln --configuration Release
+
+      - name: Build web resources
+        working-directory: supplyflow/src/webresources
+        run: |
+          npm ci
+          npm run build
+
+      - name: Schema (tables, columns, keys, N:N, environment variables)
+        run: dotnet run --project supplyflow/src/dataverse/SupplyFlow.Deployer -c Release --no-build -- schema
+
+      - name: Plugins, steps, images and Custom API
+        env:
+          SUPPLYFLOW_SB_NAMESPACE: ${{ vars.SERVICEBUS_NAMESPACE }}
+          SUPPLYFLOW_SB_SASKEY: ${{ secrets.SERVICEBUS_DATAVERSE_SASKEY }}
+        run: >
+          dotnet run --project supplyflow/src/dataverse/SupplyFlow.Deployer -c Release --no-build --
+          plugins --assembly supplyflow/src/dataverse/SupplyFlow.Plugins/bin/Release/net462/SupplyFlow.Plugins.dll
+
+      - name: Web resources
+        run: dotnet run --project supplyflow/src/dataverse/SupplyFlow.Deployer -c Release --no-build -- webresources --folder supplyflow/src/webresources/dist
+
+      - name: Seed data
+        if: ${{ inputs.seed }}
+        run: dotnet run --project supplyflow/src/dataverse/SupplyFlow.Deployer -c Release --no-build -- seed
+
+      - uses: microsoft/powerplatform-actions/actions-install@v1
+      - name: PCF controls
+        shell: pwsh
+        working-directory: supplyflow/src/pcf
+        run: |
+          npm ci
+          pac auth create --environment ${{ vars.DEV_ENVIRONMENT_URL }} --applicationId ${{ secrets.PP_APP_ID }} --clientSecret ${{ secrets.PP_CLIENT_SECRET }} --tenant ${{ secrets.PP_TENANT_ID }}
+          pac pcf push --publisher-prefix fno --solution-unique-name SupplyFlow --incremental

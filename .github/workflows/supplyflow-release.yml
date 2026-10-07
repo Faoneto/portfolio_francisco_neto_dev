@@ -1,0 +1,122 @@
+name: SupplyFlow – Release (TEST → PROD)
+
+# Builds the managed solution ONCE from source control and promotes the same artifact through
+# environments protected by GitHub Environment approvals. Environment-specific values (connection
+# references, environment variables) come from supplyflow/deployment/settings/<env>.json – never edited in PROD.
+
+on:
+  push:
+    tags: ["supplyflow-v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # OIDC login to Azure (no stored Azure secret)
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: microsoft/powerplatform-actions/actions-install@v1
+      - name: Pack managed solution
+        uses: microsoft/powerplatform-actions/pack-solution@v1
+        with:
+          solution-folder: supplyflow/solution/src
+          solution-file: supplyflow/out/SupplyFlow_managed.zip
+          solution-type: Managed
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Publish Azure Function
+        run: dotnet publish supplyflow/src/integration/SupplyFlow.Integration -c Release -o supplyflow/out/function
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release
+          path: supplyflow/out
+
+  deploy-test:
+    needs: build
+    runs-on: windows-latest
+    environment: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: release
+          path: supplyflow/out
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Azure infrastructure (Bicep)
+        uses: azure/arm-deploy@v2
+        with:
+          resourceGroupName: ${{ vars.AZURE_RESOURCE_GROUP }}
+          template: supplyflow/infra/main.bicep
+          parameters: environmentName=test dataverseUrl=${{ vars.ENVIRONMENT_URL }}
+      - name: Azure Function
+        uses: Azure/functions-action@v1
+        with:
+          app-name: ${{ vars.FUNCTION_APP_NAME }}
+          package: supplyflow/out/function
+          sku: flexconsumption
+      - uses: microsoft/powerplatform-actions/actions-install@v1
+      - name: Import managed solution
+        uses: microsoft/powerplatform-actions/import-solution@v1
+        with:
+          environment-url: ${{ vars.ENVIRONMENT_URL }}
+          app-id: ${{ secrets.PP_APP_ID }}
+          client-secret: ${{ secrets.PP_CLIENT_SECRET }}
+          tenant-id: ${{ secrets.PP_TENANT_ID }}
+          solution-file: supplyflow/out/SupplyFlow_managed.zip
+          use-deployment-settings-file: true
+          deployment-settings-file: supplyflow/deployment/settings/test.json
+          stage-and-upgrade: true
+          publish-changes: true
+          activate-plugins: true
+          run-asynchronously: true
+
+  deploy-prod:
+    needs: deploy-test
+    runs-on: windows-latest
+    environment: prod # configure "Required reviewers" on this GitHub environment
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: release
+          path: supplyflow/out
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Azure infrastructure (Bicep)
+        uses: azure/arm-deploy@v2
+        with:
+          resourceGroupName: ${{ vars.AZURE_RESOURCE_GROUP }}
+          template: supplyflow/infra/main.bicep
+          parameters: environmentName=prod dataverseUrl=${{ vars.ENVIRONMENT_URL }} sapBaseUrl=${{ vars.SAP_BASE_URL }}
+      - name: Azure Function
+        uses: Azure/functions-action@v1
+        with:
+          app-name: ${{ vars.FUNCTION_APP_NAME }}
+          package: supplyflow/out/function
+          sku: flexconsumption
+      - uses: microsoft/powerplatform-actions/actions-install@v1
+      - name: Import managed solution
+        uses: microsoft/powerplatform-actions/import-solution@v1
+        with:
+          environment-url: ${{ vars.ENVIRONMENT_URL }}
+          app-id: ${{ secrets.PP_APP_ID }}
+          client-secret: ${{ secrets.PP_CLIENT_SECRET }}
+          tenant-id: ${{ secrets.PP_TENANT_ID }}
+          solution-file: supplyflow/out/SupplyFlow_managed.zip
+          use-deployment-settings-file: true
+          deployment-settings-file: supplyflow/deployment/settings/prod.json
+          stage-and-upgrade: true
+          publish-changes: true
+          activate-plugins: true
+          run-asynchronously: true
